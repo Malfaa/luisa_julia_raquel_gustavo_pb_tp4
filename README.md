@@ -191,6 +191,19 @@ A URL gerada no TP3 está registrada em `others/planejamento.md`.
 
 https://github.com/Malfaa/luisa_julia_raquel_gustavo_pb_tp4
 
+## Declaração de Uso de IA
+
+Em conformidade com as diretrizes do projeto, declaramos explicitamente o uso de ferramentas de IA como apoio técnico nas atividades do TP4:
+
+### Etapa de ML e EDA (Tarefas 1 e 3)
+Uso da ferramenta de IA **Gemini (Google)** como apoio técnico nas seguintes atividades:
+- Estruturação do pipeline de classificação multiclasse em `scikit-learn` (`CountVectorizer` + `LogisticRegression`);
+- Configuração da busca de hiperparâmetros com `GridSearchCV` e validação cruzada estratificada (`StratifiedKFold`);
+- Geração do código de cálculo das métricas, tabela comparativa, matrizes de confusão e gráfico da curva ROC-AUC multiclasse (OvR);
+- Serialização dos artefatos `.joblib` e organização do repositório (`pentest/.gitkeep`, atualização de `requirements.txt` e `README.md`).
+
+Todo o código, os experimentos e os artefatos serializados (`.joblib`) foram validados por meio de execução real do notebook ponta a ponta e verificação automatizada da suíte de testes.
+
 ## Integrantes
 
 - Luisa Hering Bell de Otero
