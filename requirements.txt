@@ -6,6 +6,7 @@ seaborn
 scipy
 jupyter
 scikit-learn
+joblib
 
 # API e Persistência
 fastapi[standard]
