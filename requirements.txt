@@ -19,3 +19,7 @@ slowapi
 
 # TESTES
 pytest
+
+# AGENTE
+openai-agents
+requests

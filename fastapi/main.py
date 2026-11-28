@@ -4,6 +4,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from routes.auth import router as auth_router
+from routes.classify import classify_router
 from routes.health import health_router
 from routes.predict import predict_router
 from security.cors import CONFIG_CORS
@@ -33,3 +34,4 @@ app.add_middleware(CORSMiddleware, **CONFIG_CORS)
 app.include_router(auth_router)
 app.include_router(health_router)
 app.include_router(predict_router)
+app.include_router(classify_router)
