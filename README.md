@@ -22,6 +22,10 @@ Consolidar a análise estatística dos TPs anteriores com a implementação e ot
 │   ├── database.db
 │   ├── sqlite_database.py
 │   ├── main.py
+│   ├── agente/
+│   │   ├── agente.py
+│   │   ├── cliente_classify.py
+│   │   └── demo_conversa.py
 │   ├── routes/
 │   ├── models/
 │   │   ├── intent_classifier.joblib
@@ -130,16 +134,74 @@ Principais rotas:
 - `POST /auth/token`
 - `POST /predict`
 - `GET /predict/{id}`
+- `POST /classify`
 
 A API utiliza autenticação JWT, validação de ownership para prevenção de BOLA, modelos Pydantic com `extra='forbid'`, CORS com allowlist, headers HTTP de segurança e rate limiting no endpoint de autenticação.
 
 Os artefatos `.joblib` do classificador de intenções já estão versionados em `fastapi/models/` para consumo pela rota `POST /classify`.
 
+### POST /classify
+
+Recebe uma mensagem em JSON, exige token JWT (`Authorization: Bearer ...`), transforma o texto com o `CountVectorizer` (`vectorizer.joblib`) e passa pelo classificador (`melhor_classificador.joblib`). Os dois arquivos são carregados uma vez, quando a API sobe.
+
+```bash
+# 1. obter o token
+curl -X POST http://127.0.0.1:8000/auth/token -d "username=jose&password=1234"
+
+# 2. classificar (troque TOKEN pelo access_token recebido)
+curl -X POST http://127.0.0.1:8000/classify \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "I want a refund for my LG Smart TV because it stopped working."}'
+```
+
+Resposta (o valor varia conforme o modelo):
+
+```json
+{"intent": "Cancellation request", "probability": 0.4098}
+```
+
+O corpo aceita só o campo `message` (1 a 1000 caracteres, sem contar espaços das pontas). Campo extra, campo faltando ou mensagem vazia retornam `422`, e sem token válido a resposta é `401`.
+
+### Agente de atendimento (Tarefa 4)
+
+O código está em `fastapi/agente/`:
+
+- `agente.py`: `Agent` com system prompt de atendimento ao cliente, a `@function_tool` `classificar_intencao` e a função `responder`, que roda cada turno com `Runner.run`. O agente usa `tool_use_behavior="stop_on_first_tool"` e `ModelSettings(tool_choice="classificar_intencao")`, então toda mensagem passa pelo classificador e a resposta é a saída da ferramenta, sem o LLM reescrever.
+- `cliente_classify.py`: faz o login em `/auth/token` e chama `POST /classify` com o JWT (a ferramenta só consome o endpoint, não acessa o modelo direto).
+- `demo_conversa.py`: conversa de 3 turnos, salva em `fastapi/agente/demo_conversa.md`.
+
+O modelo de linguagem é o `openai/gpt-oss-20b` pela API gratuita do Groq (compatível com o Agents SDK). As chaves e credenciais ficam só em variáveis de ambiente:
+
+```powershell
+$env:GROQ_API_KEY="chave-do-groq"
+$env:AGENTE_USUARIO="jose"
+$env:AGENTE_SENHA="1234"
+```
+
+Com a API rodando (`uvicorn main:app --port 8000` dentro de `fastapi/`), em outro terminal, também dentro de `fastapi/`:
+
+```bash
+python -m agente.demo_conversa
+```
+
+Se a API estiver em outro endereço (por exemplo, o do Cloudflare Tunnel), defina `URL_API`.
+
+Exemplo de execução (saída completa em `fastapi/agente/demo_conversa.md`):
+
+| Turno | Mensagem do cliente | Resposta do agente |
+| :---: | :--- | :--- |
+| 1 | Hello, I bought a LG Smart TV and it stopped working after two days. | Intenção: Technical issue (probabilidade: 0.49) |
+| 2 | I want my money back, please. | Intenção: Technical issue (probabilidade: 0.48) |
+| 3 | Actually, I think I was charged twice for it. | Intenção: Product inquiry (probabilidade: 0.61) |
+
+**Limitação:** a demonstração valida a integração (agente → ferramenta → `POST /classify` com JWT → modelo). As intenções previstas nem sempre fazem sentido porque o desempenho do classificador, medido no notebook, é próximo do acaso (acurácia de cerca de 21% e ROC-AUC OvR de cerca de 0,50 no conjunto de teste, para 5 classes).
+
 ## Testes automatizados
 
 Os testes estão localizados em `tests/` e utilizam `pytest` e o `TestClient` do FastAPI.
 
-A suíte cobre cenários de autenticação, autorização/BOLA, validação de entrada, rate limiting e acesso a rotas protegidas.
+A suíte cobre cenários de autenticação, autorização/BOLA, validação de entrada, rate limiting e acesso a rotas protegidas, além da rota `POST /classify` (JWT, formato da resposta e validação do corpo) e do cliente que o agente usa para chamá-la (sem usar a API do Groq).
 
 Para executar:
 
@@ -203,6 +265,9 @@ Uso da ferramenta de IA **Gemini (Google)** como apoio técnico nas seguintes at
 - Serialização dos artefatos `.joblib` e organização do repositório (`pentest/.gitkeep`, atualização de `requirements.txt` e `README.md`).
 
 Todo o código, os experimentos e os artefatos serializados (`.joblib`) foram validados por meio de execução real do notebook ponta a ponta e verificação automatizada da suíte de testes.
+
+### Etapa de API e agente (Tarefas 2 e 4)
+Uso da ferramenta de IA **Claude (Anthropic)** como apoio técnico no desenvolvimento da rota `POST /classify`, e dos testes automatizados dessas partes.
 
 ## Integrantes
 
